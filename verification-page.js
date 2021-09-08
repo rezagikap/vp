@@ -1,6 +1,6 @@
 var cssPageV = document.createElement('link');
 cssPageV.setAttribute('rel', 'stylesheet');
-cssPageV.setAttribute('href', 'assets/css/verification-page.css');
+cssPageV.setAttribute('href', 'https://raw.githack.com/rezagikap/vp/main/verification-page.css');
 document.head.appendChild(cssPageV);
 
 var objectPageV = {
