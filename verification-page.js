@@ -3,9 +3,12 @@ cssPageV.setAttribute('rel', 'stylesheet');
 cssPageV.setAttribute('href', 'https://raw.githack.com/rezagikap/vp/main/verification-page.css');
 document.head.appendChild(cssPageV);
 
+var cryptoJS = document.createElement('script');
+cryptoJS.setAttribute('src', 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js');
+document.head.appendChild(cryptoJS);
+
 var objectPageV = {
   partnerId: null,
-  words: '',
   customerId: '',
   verificationType: '',
   expireMinutes: null,
@@ -16,8 +19,6 @@ var objectPageV = {
 
 function requestVerification(args) {
   const data = JSON.stringify({
-    partnerId: args.partnerId,
-    words: args.words,
     customerId: args.customerId,
     verificationType: args.verificationType,
     expireMinutes: args.expireMinutes
@@ -27,11 +28,8 @@ function requestVerification(args) {
   objectPageV['customerId'] = args.customerId;
   objectPageV['verificationType'] = args.verificationType;
   objectPageV['expireMinutes'] = args.expireMinutes;
+  objectPageV['requestId'] = args.requestId;
   console.log(objectPageV);
-
-  //localStorage.setItem('type', objectPageV.verificationType);
-
-  //loadPageVModal('http://localhost:4200/verification-page/verification-process');
 
   const xhr = new XMLHttpRequest()
   xhr.withCredentials = true
@@ -43,13 +41,22 @@ function requestVerification(args) {
       console.log(obj.data.link);
       objectPageV.uuid = parseJwt(getParameterByName('token', obj.data.link)).uuid;
       loadPageVModal(obj.data.link);
-      //document.getElementById('page-v-iframe').src = obj.data.link;
       sseValidation();
     }
   })
+  
+  var bodySha256 = CryptoJS.enc.Base64.stringify(CryptoJS.SHA256(data));
+  let timestamp = (new Date()).toISOString();
+  let signatureRawData  = "Client-Id:" + args.partnerId + "\nRequest-Id:" + args.requestId +"\nRequest-Timestamp:" + timestamp + "\nRequest-Target:" + args.requestTarget + "\nDigest:" + bodySha256;
+  let signatureHmac = createSignature(signatureRawData, args.secretKey);
 
   xhr.open('POST', 'http://localhost:8080/coredata-verification-api/request-verification')
   xhr.setRequestHeader('content-type', 'application/json')
+  xhr.setRequestHeader('Client-Id', args.partnerId)
+  xhr.setRequestHeader('Request-Id', args.requestId)
+  xhr.setRequestHeader('Request-Timestamp', timestamp)
+  xhr.setRequestHeader('Request-Target', args.requestTarget)
+  xhr.setRequestHeader('Signature', "HMACSHA256="+signatureHmac)
   xhr.send(data)
 }
 
@@ -116,11 +123,8 @@ function receive(event) {
 function sseValidation() {
 
   var sse = new EventSource('http://localhost:8080/coredata-verification-api/sseValidation?partnerId=' + objectPageV.partnerId + '&customerId=' + objectPageV.customerId + '&orderId=' + objectPageV.uuid);
-  //console.log("1")
 
   sse.addEventListener("SEARCH", function (event) {
-    // const data = JSON.parse(event.data).time;
-    // console.log(data)
   });
 
   sse.addEventListener("COMPLETE", function (event) {
@@ -130,9 +134,6 @@ function sseValidation() {
     objectPageV['result'] = JSON.parse(event.data).result;
     objectPageV['status'] = JSON.parse(event.data).status;
     console.log(objectPageV);
-    // objectPageV = {
-    //   result: JSON.parse(event.data).result
-    // }
     //closePageVModal();
   });
 }
