@@ -60,6 +60,13 @@ function requestVerification(args) {
   xhr.send(data)
 }
 
+function createSignature(rawData, secretKey){
+  let signatureUtf8 = CryptoJS.enc.Utf8.parse(rawData);
+  var secretUtf8 = CryptoJS.enc.Utf8.parse(secretKey);
+  var signatureBytes = CryptoJS.HmacSHA256(signatureUtf8,secretUtf8);
+  return CryptoJS.enc.Base64.stringify(signatureBytes);
+}
+
 function getParameterByName(name, url = window.location.href) {
   name = name.replace(/[\[\]]/g, '\\$&');
   var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
